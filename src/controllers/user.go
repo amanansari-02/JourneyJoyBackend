@@ -27,13 +27,7 @@ func CreateUser(c *gin.Context) {
 	}
 
 	var existsingUser models.User
-	if err := config.DB.Where("email = ?", email).First(&existsingUser).Error; err == nil {
-		common.ErrorJsonResponse(c, http.StatusBadRequest, common.EMAIL_ERR_MSG)
-		return
-	} else if err != gorm.ErrRecordNotFound {
-		common.ErrorJsonResponse(c, http.StatusInternalServerError, common.DATABASE_ERR_MSG)
-		return
-	}
+	common.FindJsonResponse(c, "email", email, existsingUser, http.StatusBadRequest, common.EMAIL_ERR_MSG)
 
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
