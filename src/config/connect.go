@@ -1,8 +1,8 @@
 package config
 
 import (
-	"Gin/src/initializers"
-	"Gin/src/migrations"
+	"JourneyJoyBackend/src/initializers"
+	"JourneyJoyBackend/src/migrations"
 	"fmt"
 	"log"
 	"os"

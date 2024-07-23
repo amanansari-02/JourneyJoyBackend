@@ -1,9 +1,10 @@
 package main
 
 import (
-	"Gin/src/config"
-	"Gin/src/initializers"
-	"Gin/src/routes"
+	"JourneyJoyBackend/src/config"
+	"JourneyJoyBackend/src/initializers"
+	"JourneyJoyBackend/src/middleware"
+	"JourneyJoyBackend/src/routes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,8 +12,13 @@ import (
 func main() {
 	initializers.LoadEnvVariables() // Load Env
 	config.ConnectDB()              // Connect DB
-
 	r := gin.Default()
+	r.Use(middleware.CorsMiddleware())
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"msg": "done",
+		})
+	})
 	routes.UserRoutes(r)
 	r.Run()
 }

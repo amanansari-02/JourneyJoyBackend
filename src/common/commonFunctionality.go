@@ -1,7 +1,7 @@
 package common
 
 import (
-	"Gin/src/config"
+	"JourneyJoyBackend/src/config"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,12 +26,24 @@ func ErrorJsonResponse(c *gin.Context, statusCode int, message string) {
 	})
 }
 
-func FindJsonResponse(c *gin.Context, searchField string, value string, data interface{}, statusCode int, errMsg string) {
+func FindJsonResponse(c *gin.Context, searchField string, value string, data interface{}, statusCode int, errMsg string) bool {
 	if err := config.DB.Where(searchField+" = ?", value).First(&data).Error; err == nil {
 		ErrorJsonResponse(c, statusCode, errMsg)
-		return
+		return true
 	} else if err != gorm.ErrRecordNotFound {
 		ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")
+		return true
+	}
+	return false
+}
+
+func findData(c *gin.Context, searchField string, value string, data interface{}, statusCode int, errMsg string) {
+	if err := config.DB.Where(searchField+" = ?", value).First(&data).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			ErrorJsonResponse(c, statusCode, errMsg)
+		} else {
+			ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")
+		}
 		return
 	}
 }

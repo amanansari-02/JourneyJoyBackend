@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"Gin/src/common"
-	"Gin/src/config"
-	"Gin/src/models"
+	"JourneyJoyBackend/src/common"
+	"JourneyJoyBackend/src/config"
+	"JourneyJoyBackend/src/models"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,7 +27,9 @@ func CreateUser(c *gin.Context) {
 	}
 
 	var existsingUser models.User
-	common.FindJsonResponse(c, "email", email, existsingUser, http.StatusBadRequest, common.EMAIL_ERR_MSG)
+	if common.FindJsonResponse(c, "email", email, &existsingUser, http.StatusBadRequest, common.EMAIL_ERR_MSG) {
+		return
+	}
 
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -35,7 +37,7 @@ func CreateUser(c *gin.Context) {
 	}
 
 	var profilePhotoPath string
-	file, err := c.FormFile("profilePhoto")
+	file, err := c.FormFile("ProfilePhoto")
 	if err == nil {
 		// Take Image from user
 		ext := filepath.Ext(file.Filename)
@@ -51,6 +53,7 @@ func CreateUser(c *gin.Context) {
 		err := c.SaveUploadedFile(file, filePath)
 		if err != nil {
 			common.ErrorJsonResponse(c, http.StatusBadRequest, common.FAILED_SAVED_FILE_MSG)
+			return
 		}
 
 		profilePhotoPath = filePath
@@ -142,4 +145,13 @@ func Login(c *gin.Context) {
 	}
 
 	common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
+}
+
+func GetUserById(c *gin.Context) {
+	// var user models.User
+	// id := c.Param("id")
+	// if common.FindJsonResponse(c, "id", id, &user, http.StatusBadRequest, common.USER_NOT_FOUND) {
+	// 	return
+	// }
+	// common.JsonResponse(c, http.StatusOK, "Single User", user)
 }

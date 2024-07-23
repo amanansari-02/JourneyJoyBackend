@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"Gin/src/common"
-	"Gin/src/controllers"
+	"JourneyJoyBackend/src/common"
+	"JourneyJoyBackend/src/controllers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,4 +13,5 @@ func UserRoutes(r *gin.Engine) {
 	r.DELETE(common.USER_BY_ID, controllers.DeleteUser)
 	r.PUT(common.USER_BY_ID, controllers.UpdateUser)
 	r.POST(common.LOGIN, controllers.Login)
+	r.GET(common.USER_BY_ID, controllers.GetUserById)
 }

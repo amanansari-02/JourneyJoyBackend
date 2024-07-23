@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"Gin/src/models"
+	"JourneyJoyBackend/src/models"
 
 	"gorm.io/gorm"
 )
