@@ -4,10 +4,13 @@ import (
 	"JourneyJoyBackend/src/common"
 	"JourneyJoyBackend/src/config"
 	"JourneyJoyBackend/src/models"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +18,31 @@ import (
 	"gorm.io/gorm"
 )
 
+func GenerateRandomPassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+}
+
 func CreateUser(c *gin.Context) {
 	// For FormData
 	name := c.PostForm("Name")
 	email := c.PostForm("Email")
 	password := c.PostForm("Password")
 	phoneNo := c.PostForm("PhoneNo")
-	if name == "" || email == "" || password == "" {
+	isEmailLoginStr := c.PostForm("IsEmailLogin")
+	isEmailLoginInt, err := strconv.Atoi(isEmailLoginStr)
+	if err != nil {
+		common.ErrorJsonResponse(c, http.StatusBadRequest, "Invalid IsEmailLogin value")
+		return
+	}
+	isEmailLogin := int64(isEmailLoginInt)
+
+	// hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	if name == "" || email == "" || (password == "" && isEmailLogin != 1) {
 		common.ErrorJsonResponse(c, http.StatusBadRequest, common.USER_ERR_MSG)
 		return
 	}
@@ -29,6 +50,14 @@ func CreateUser(c *gin.Context) {
 	var existsingUser models.User
 	if common.FindJsonResponse(c, "email", email, &existsingUser, http.StatusBadRequest, common.EMAIL_ERR_MSG) {
 		return
+	}
+
+	if isEmailLogin == 1 {
+		password, err = GenerateRandomPassword(12)
+		if err != nil {
+			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Failed to generate password")
+			return
+		}
 	}
 
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -65,6 +94,8 @@ func CreateUser(c *gin.Context) {
 		Password:     string(hashedPass),
 		PhoneNo:      phoneNo,
 		ProfilePhoto: profilePhotoPath,
+		IsEmailLogin: isEmailLogin,
+		Role:         2,
 	}
 
 	// Create User
