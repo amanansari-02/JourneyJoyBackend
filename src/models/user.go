@@ -7,6 +7,7 @@ type User struct {
 	Password     string `binding:"required" bson:"password" json:"password"`
 	PhoneNo      string `binding:"omitempty" bson:"phoneNo,omitempty" json:"phoneNo,omitempty"`
 	ProfilePhoto string `binding:"omitempty" bson:"profilePhoto" json:"profilePhoto"`
+	Role         int64  `binding:"omitempty" bson:"role" json:"role"`
 }
 
 func (User) TableName() string {
