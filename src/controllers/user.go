@@ -35,12 +35,10 @@ func CreateUser(c *gin.Context) {
 	isEmailLoginStr := c.PostForm("IsEmailLogin")
 	isEmailLoginInt, err := strconv.Atoi(isEmailLoginStr)
 	if err != nil {
-		common.ErrorJsonResponse(c, http.StatusBadRequest, "Invalid IsEmailLogin value")
+		common.ErrorJsonResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	isEmailLogin := int64(isEmailLoginInt)
-
-	// hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	if name == "" || email == "" || (password == "" && isEmailLogin != 1) {
 		common.ErrorJsonResponse(c, http.StatusBadRequest, common.USER_ERR_MSG)
@@ -155,27 +153,100 @@ func UpdateUser(c *gin.Context) {
 	common.JsonResponse(c, http.StatusOK, common.USER_UPD_SUCCESS_MSG, user)
 }
 
+func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
+	name := c.PostForm("Name")
+	email := c.PostForm("Email")
+	phoneNo := c.PostForm("PhoneNo")
+
+	password, err := GenerateRandomPassword(12)
+	if err != nil {
+		common.ErrorJsonResponse(c, http.StatusInternalServerError, "Failed to generate password")
+		return
+	}
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		common.ErrorJsonResponse(c, http.StatusInternalServerError, common.FAILED_HASH_MSG)
+		return
+	}
+
+	var profilePhotoPath string
+	file, err := c.FormFile("ProfilePhoto")
+	if err == nil {
+		ext := filepath.Ext(file.Filename)
+		if ext != ".jpg" && ext != ".png" && ext != ".jpeg" {
+			common.ErrorJsonResponse(c, http.StatusBadRequest, common.FILE_TYPE_MSG)
+			return
+		}
+		currentTime := time.Now().Format("20060102150405")
+		fileName := fmt.Sprintf("%s_%s%s", currentTime, file.Filename, ext)
+		filePath := "uploads/profile_photos/" + fileName
+		err := c.SaveUploadedFile(file, filePath)
+		if err != nil {
+			common.ErrorJsonResponse(c, http.StatusBadRequest, common.FAILED_SAVED_FILE_MSG)
+			return
+		}
+		profilePhotoPath = filePath
+	}
+
+	user := models.User{
+		Name:         name,
+		Email:        email,
+		Password:     string(hashedPass),
+		PhoneNo:      phoneNo,
+		ProfilePhoto: profilePhotoPath,
+		IsEmailLogin: isEmailLogin,
+		Role:         2,
+	}
+
+	result := config.DB.Create(&user)
+	if result.Error != nil {
+		common.ErrorJsonResponse(c, http.StatusInternalServerError, common.CREATE_USER_ERR_MSG)
+		return
+	}
+
+	common.JsonResponse(c, http.StatusCreated, common.USER_CREATE_SUCCESS_MSG, user)
+}
+
 func Login(c *gin.Context) {
-	var req common.LoginStruct
-	if err := c.BindJSON(&req); err != nil {
+	Email := c.PostForm("Email")
+	Password := c.PostForm("Password")
+	isEmailLoginStr := c.PostForm("IsEmailLogin")
+	isEmailLoginInt, err := strconv.Atoi(isEmailLoginStr)
+	if err != nil {
 		common.ErrorJsonResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	isEmailLogin := int64(isEmailLoginInt)
 
-	var user models.User
-	if err := config.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			common.ErrorJsonResponse(c, http.StatusNotFound, "User Not Found")
+	if isEmailLogin == 1 {
+		var existingUser models.User
+		err := config.DB.Where("email = ?", Email).First(&existingUser).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				SignUpWithGoogle(c, isEmailLogin)
+				return
+			}
+			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")
+			return
 		}
+		common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
 		return
+	} else {
+		var user models.User
+		if err := config.DB.Where("email = ?", Email).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				common.ErrorJsonResponse(c, http.StatusNotFound, "User Not Found")
+			}
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(Password)); err != nil {
+			common.ErrorJsonResponse(c, http.StatusBadRequest, common.INCORRECT_PASS_ERR_MSG)
+			return
+		}
+		common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		common.ErrorJsonResponse(c, http.StatusBadRequest, common.INCORRECT_PASS_ERR_MSG)
-		return
-	}
-
-	common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
 }
 
 func GetUserById(c *gin.Context) {
