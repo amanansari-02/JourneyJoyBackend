@@ -224,6 +224,7 @@ func Login(c *gin.Context) {
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				SignUpWithGoogle(c, isEmailLogin)
+				common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
 				return
 			}
 			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")

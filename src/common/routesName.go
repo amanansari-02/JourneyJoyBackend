@@ -8,4 +8,7 @@ const (
 
 	// Contact Us
 	CONTACT_US = "/contact_us"
+
+	// Property
+	PROPERTY = "/property"
 )

@@ -1,6 +1,16 @@
 package controllers
 
-import "github.com/gin-gonic/gin"
+import (
+	"JourneyJoyBackend/src/config"
+	"JourneyJoyBackend/src/models"
+	"fmt"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
 
 // import (
 // 	"Gin/src/config"
@@ -13,71 +23,79 @@ import "github.com/gin-gonic/gin"
 // 	"strings"
 // 	"time"
 
-// 	"github.com/gin-gonic/gin"
-// 	"gorm.io/gorm"
+//	"github.com/gin-gonic/gin"
+//	"gorm.io/gorm"
+//
 // )
 
 func AddProperty(c *gin.Context) {
+	PropertyName := c.PostForm("propertyName")
+	PropertyType := c.PostForm("propertyType")
+	PriceStr := c.PostForm("price")
+	Description := c.PostForm("description")
+	Location := c.PostForm("location")
+	City := c.PostForm("city")
+	RoomsStr := c.PostForm("rooms")
+	NoOfGuestsStr := c.PostForm("noOfGuests")
 
+	// Convert price and guest numbers
+	Price, err := strconv.ParseFloat(PriceStr, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid price"})
+		return
+	}
+	Rooms, err := strconv.ParseInt(RoomsStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid number of rooms"})
+		return
+	}
+	NoOfGuests, err := strconv.ParseInt(NoOfGuestsStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid number of guests"})
+		return
+	}
+
+	// Handle file uploads
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	files := form.File["propertyImages"]
+	ImagePaths := []string{}
+	for _, file := range files {
+		currentTime := time.Now().Format("20060102150405")
+		fileName := fmt.Sprintf("%s_%s", currentTime, filepath.Base(file.Filename))
+		savePath := fmt.Sprintf("uploads/property_image/%s", fileName)
+		err := c.SaveUploadedFile(file, savePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save file"})
+			return
+		}
+		ImagePaths = append(ImagePaths, savePath)
+	}
+
+	// Create and save the property
+	property := models.Property{
+		PropertyName:   PropertyName,
+		PropertyType:   PropertyType,
+		Price:          Price,
+		Description:    Description,
+		Location:       Location,
+		City:           City,
+		Rooms:          Rooms,
+		NoOfGuests:     NoOfGuests,
+		PropertyImages: ImagePaths,
+	}
+
+	if err := config.DB.Create(&property).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save property", "msg": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": http.StatusCreated, "message": "Property added successfully", "data": property})
 }
-
-// 	PropertyName := c.PostForm("propertyName")
-// 	PropertyType := c.PostForm("propertyType")
-// 	PriceStr := c.PostForm("price")
-// 	Description := c.PostForm("description")
-// 	Location := c.PostForm("location")
-// 	RoomsStr := c.PostForm("rooms")
-
-// 	Price, err := strconv.ParseFloat(PriceStr, 64)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error comes to convert Price string to float"})
-// 		return
-// 	}
-
-// 	Rooms, err := strconv.ParseInt(RoomsStr, 10, 64)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error comes to convert Rooms string to int"})
-// 		return
-// 	}
-
-// 	form, err := c.MultipartForm()
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	files := form.File["propertyImages"]
-// 	ImagePaths := []string{}
-// 	for _, file := range files {
-// 		currentTime := time.Now().Format("20060102150405")
-// 		fileName := fmt.Sprintf("%s_%s", currentTime, filepath.Base(file.Filename))
-// 		savePath := fmt.Sprintf("uploads/property_image/%s", fileName)
-// 		err := c.SaveUploadedFile(file, savePath)
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save file"})
-// 			return
-// 		}
-
-// 		ImagePaths = append(ImagePaths, savePath)
-// 	}
-
-// 	property := models.Property{
-// 		PropertyName:   PropertyName,
-// 		PropertyType:   PropertyType,
-// 		PropertyImages: ImagePaths,
-// 		Price:          Price,
-// 		Location:       Location,
-// 		Rooms:          Rooms,
-// 		Description:    Description,
-// 	}
-
-// 	if err := config.DB.Create(&property); err.Error != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to save property", "msg": err.Error.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{"status": http.StatusCreated, "message": "Property added successfully", "data": property})
-// }
 
 // func GetProperties(c *gin.Context) {
 // 	var Property []models.Property

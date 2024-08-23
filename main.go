@@ -19,6 +19,9 @@ func main() {
 			"msg": "done",
 		})
 	})
+
+	// Routes declare
 	routes.UserRoutes(r)
+	routes.PropertyRoutes(r)
 	r.Run()
 }
