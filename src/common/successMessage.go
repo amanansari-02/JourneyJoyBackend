@@ -10,4 +10,7 @@ const (
 
 	// contact Us
 	CONTACT_US_SUCCESS_MSG = "User enquiry added"
+
+	// property
+	LATEST_PROPERTY = "Latest property data"
 )

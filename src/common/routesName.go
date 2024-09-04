@@ -10,5 +10,8 @@ const (
 	CONTACT_US = "/contact_us"
 
 	// Property
-	PROPERTY = "/property"
+	PROPERTY            = "/property"
+	PROPERTY_BY_ID      = "/property/:id"
+	LATEST_PROPERTY_URL = "/property/latest"
+	SEARCH_BY_NAME_TYPE = "/property/SeacrhByNameAndType"
 )

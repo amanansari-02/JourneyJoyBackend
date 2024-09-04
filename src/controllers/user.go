@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -153,7 +154,7 @@ func UpdateUser(c *gin.Context) {
 	common.JsonResponse(c, http.StatusOK, common.USER_UPD_SUCCESS_MSG, user)
 }
 
-func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
+func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) (string, error) {
 	name := c.PostForm("Name")
 	email := c.PostForm("Email")
 	phoneNo := c.PostForm("PhoneNo")
@@ -161,12 +162,12 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
 	password, err := GenerateRandomPassword(12)
 	if err != nil {
 		common.ErrorJsonResponse(c, http.StatusInternalServerError, "Failed to generate password")
-		return
+		return "", err
 	}
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		common.ErrorJsonResponse(c, http.StatusInternalServerError, common.FAILED_HASH_MSG)
-		return
+		return "", err
 	}
 
 	var profilePhotoPath string
@@ -175,7 +176,7 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
 		ext := filepath.Ext(file.Filename)
 		if ext != ".jpg" && ext != ".png" && ext != ".jpeg" {
 			common.ErrorJsonResponse(c, http.StatusBadRequest, common.FILE_TYPE_MSG)
-			return
+			return "", errors.New("invalid file type")
 		}
 		currentTime := time.Now().Format("20060102150405")
 		fileName := fmt.Sprintf("%s_%s%s", currentTime, file.Filename, ext)
@@ -183,7 +184,7 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
 		err := c.SaveUploadedFile(file, filePath)
 		if err != nil {
 			common.ErrorJsonResponse(c, http.StatusBadRequest, common.FAILED_SAVED_FILE_MSG)
-			return
+			return "", err
 		}
 		profilePhotoPath = filePath
 	}
@@ -201,10 +202,11 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) {
 	result := config.DB.Create(&user)
 	if result.Error != nil {
 		common.ErrorJsonResponse(c, http.StatusInternalServerError, common.CREATE_USER_ERR_MSG)
-		return
+		return "", result.Error
 	}
 
 	common.JsonResponse(c, http.StatusCreated, common.USER_CREATE_SUCCESS_MSG, user)
+	return email, nil
 }
 
 func Login(c *gin.Context) {
@@ -223,8 +225,20 @@ func Login(c *gin.Context) {
 		err := config.DB.Where("email = ?", Email).First(&existingUser).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				SignUpWithGoogle(c, isEmailLogin)
-				common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
+				email, err := SignUpWithGoogle(c, isEmailLogin)
+				if err != nil {
+					common.ErrorJsonResponse(c, http.StatusInternalServerError, "Could not sign up with Google")
+					return
+				}
+
+				token, err := GenerateToken(email)
+				existingUser := models.User{}
+				config.DB.Where("email = ?", email).First(&existingUser)
+				if err != nil {
+					common.ErrorJsonResponse(c, http.StatusInternalServerError, "Could not generate token")
+				}
+				// common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
+				c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": common.LOGIN_SUCCESS_MSG, "data": existingUser, "token": token})
 				return
 			}
 			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")
@@ -240,12 +254,17 @@ func Login(c *gin.Context) {
 			}
 			return
 		}
-
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(Password)); err != nil {
 			common.ErrorJsonResponse(c, http.StatusBadRequest, common.INCORRECT_PASS_ERR_MSG)
 			return
 		}
-		common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
+		token, err := GenerateToken(user.Email)
+		if err != nil {
+			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Could not generate token")
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": "Login successfully", "data": user, "token": token})
+		// common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
 	}
 
 }
@@ -257,4 +276,20 @@ func GetUserById(c *gin.Context) {
 	// 	return
 	// }
 	// common.JsonResponse(c, http.StatusOK, "Single User", user)
+}
+
+func GenerateToken(Email string) (string, error) {
+	claims := jwt.MapClaims{
+		"Email": Email,
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte("secret_key"))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

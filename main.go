@@ -19,7 +19,7 @@ func main() {
 			"msg": "done",
 		})
 	})
-
+	r.Static("/uploads", "./uploads") // for images
 	// Routes declare
 	routes.UserRoutes(r)
 	routes.PropertyRoutes(r)
