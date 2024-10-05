@@ -13,4 +13,9 @@ const (
 
 	// property
 	LATEST_PROPERTY = "Latest property data"
+
+	// Booking
+
+	CREATE_BOOKING  = "Booking added successfully"
+	GET_ALL_BOOKING = "Get all booking data"
 )

@@ -23,5 +23,6 @@ func main() {
 	// Routes declare
 	routes.UserRoutes(r)
 	routes.PropertyRoutes(r)
+	routes.BookingRoutes(r)
 	r.Run()
 }

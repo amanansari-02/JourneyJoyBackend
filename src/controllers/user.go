@@ -179,7 +179,7 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) (string, error) {
 			return "", errors.New("invalid file type")
 		}
 		currentTime := time.Now().Format("20060102150405")
-		fileName := fmt.Sprintf("%s_%s%s", currentTime, file.Filename, ext)
+		fileName := fmt.Sprintf("%s_%s%s", currentTime, file.Filename)
 		filePath := "uploads/profile_photos/" + fileName
 		err := c.SaveUploadedFile(file, filePath)
 		if err != nil {
@@ -205,7 +205,7 @@ func SignUpWithGoogle(c *gin.Context, isEmailLogin int64) (string, error) {
 		return "", result.Error
 	}
 
-	common.JsonResponse(c, http.StatusCreated, common.USER_CREATE_SUCCESS_MSG, user)
+	// common.JsonResponse(c, http.StatusCreated, common.USER_CREATE_SUCCESS_MSG, user)
 	return email, nil
 }
 
@@ -237,20 +237,26 @@ func Login(c *gin.Context) {
 				if err != nil {
 					common.ErrorJsonResponse(c, http.StatusInternalServerError, "Could not generate token")
 				}
-				// common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
+
 				c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": common.LOGIN_SUCCESS_MSG, "data": existingUser, "token": token})
 				return
 			}
 			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, existingUser)
+
+		token, err := GenerateToken(Email)
+		if err != nil {
+			common.ErrorJsonResponse(c, http.StatusInternalServerError, "Could not generate token")
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": "Login successfully", "data": existingUser, "token": token})
 		return
 	} else {
 		var user models.User
 		if err := config.DB.Where("email = ?", Email).First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				common.ErrorJsonResponse(c, http.StatusNotFound, "User Not Found")
+				common.ErrorJsonResponse(c, http.StatusBadRequest, "User Not Found")
 			}
 			return
 		}
@@ -264,7 +270,6 @@ func Login(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": "Login successfully", "data": user, "token": token})
-		// common.JsonResponse(c, http.StatusOK, common.LOGIN_SUCCESS_MSG, user)
 	}
 
 }
