@@ -10,7 +10,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
+// $env:GO111MODULE="on"   
+// CompileDaemon -command="./JourneyJoyBackend"
 var (
 	DB *gorm.DB
 )
