@@ -12,7 +12,7 @@ type Booking struct {
 	NoOfGuests int64     `json:"noOfGuests"`
 	Price      int64     `json:"price"`
 	Guidence   string    `json:"guidence"`
-	MobileNo   int64     `json:"mobileNo"`
+	MobileNo   string    `json:"mobileNo"`
 	Email      string    `json:"email"`
 }
 
